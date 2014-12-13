@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <SOIL.h>
 #include "shader.h"
+#include "glfw_x360_controller.h"
 
 #define MONITOR_WIDTH 1920
 #define MONITOR_HEIGHT 1080
@@ -13,7 +14,8 @@
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
 void key_callback(GLFWwindow*, int, int, int, int);
-void handle_player_input();
+void handle_player_keyboard_input();
+void handle_player_controller_input();
 
 // GLOBALS
 float delta_time = 0.0f;
@@ -67,7 +69,7 @@ int main(void)
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		handle_player_input();
+		handle_player_keyboard_input();
 
 		delta_time = ((float)glfwGetTime() - last_time) * 100.0f;
 		last_time = (float) glfwGetTime();
@@ -145,7 +147,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-void handle_player_input()
+void handle_player_keyboard_input()
 {
 	if (keys[GLFW_KEY_W])
 	{
@@ -154,5 +156,24 @@ void handle_player_input()
 	else if (keys[GLFW_KEY_S])
 	{
 		left_paddle_y_offset -= 0.008f * delta_time;
+	}
+}
+
+void handle_player_controller_input()
+{
+	if (glfwJoystickPresent(GLFW_JOYSTICK_1))
+	{
+		int size;
+		const unsigned char* results = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &size);
+		int button_pressed = get_current_button_pressed(results, size);
+
+		if (button_pressed == X360_DPAD_UP)
+		{
+			left_paddle_y_offset += 0.008f * delta_time;
+		}
+		else if (button_pressed == X360_DPAD_DOWN)
+		{
+			left_paddle_y_offset -= 0.008f * delta_time;
+		}
 	}
 }
