@@ -87,6 +87,22 @@ int main(void)
 	init_paddle(&paddle_computer, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
 	paddle_computer.origin = glm::vec2(0.95f, 0.0f);
 
+	GLfloat ball_vertices[] = {
+		 0.03f,  0.04f, 0.2f, 0.4f, 0.6f,
+		 0.03f, -0.04f, 0.2f, 0.4f, 0.6f,
+		-0.03f, -0.04f, 0.2f, 0.4f, 0.6f,
+		-0.03f,  0.04f, 0.2f, 0.4f, 0.6f,
+	};
+
+	GLuint ball_indices[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+
+	ball ball;
+	init_ball(&ball, ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
+	ball.origin = glm::vec2(0.0f, 0.0f);
+
 	last_time = (float) glfwGetTime();
 	
 	/* MAIN GAME LOOP */
@@ -111,6 +127,11 @@ int main(void)
 		glBindVertexArray(paddle_computer.vao);
 		paddle_computer.current_pos = glm::vec2(paddle_computer.origin.x, paddle_computer.origin.y + cos((float)glfwGetTime()));
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.current_pos.x, paddle_computer.current_pos.y);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		glBindVertexArray(ball.vao);
+		// Compute the back and forth motion of the ball here!
+		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.origin.x, ball.origin.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(0);

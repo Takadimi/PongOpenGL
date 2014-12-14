@@ -1,4 +1,4 @@
-﻿Build started 12/13/2014 10:10:23 PM.
+﻿Build started 12/13/2014 10:33:44 PM.
      1>Project "C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\PongOpenGL\PongOpenGL.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt pong_main.cpp
@@ -6,9 +6,22 @@
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\Debug\PongOpenGL.exe" /INCREMENTAL /NOLOGO opengl32.lib glu32.lib glfw3.lib glew32s.lib SOIL.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\Debug\PongOpenGL.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\Debug\PongOpenGL.lib" /MACHINE:X86 Debug\pong_main.obj
          Debug\shader.obj
+     1>LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
+     1>LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewAttachShader imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewCompileShader imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewCreateProgram imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewCreateShader imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewGetProgramInfoLog imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewGetProgramiv imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewGetShaderInfoLog imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewGetShaderiv imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewLinkProgram imported
+     1>shader.obj : warning LNK4049: locally defined symbol ___glewShaderSource imported
+     1>glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc100.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\Debug\vc100.pdb'; linking object as if no debug info
          PongOpenGL.vcxproj -> C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\Debug\PongOpenGL.exe
      1>Done Building Project "C:\Users\Ethan\Projects\C++_Workspace\PongOpenGL\PongOpenGL\PongOpenGL.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.66
+Time Elapsed 00:00:00.81
