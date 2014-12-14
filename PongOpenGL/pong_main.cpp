@@ -2,6 +2,7 @@
 #include <GL/glew.h>
 
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <SOIL.h>
 #include "shader.h"
 #include "glfw_x360_controller.h"
@@ -11,17 +12,34 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
-GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void key_callback(GLFWwindow*, int, int, int, int);
-void handle_player_keyboard_input();
-void handle_player_controller_input();
-
 // GLOBALS
 float delta_time = 0.0f;
 float last_time = 0.0f;
 float left_paddle_y_offset = 0.0f;
 bool keys[1024];
+
+struct paddle
+{
+	GLuint vao;
+	glm::vec2 origin;
+	glm::vec2 current_pos;
+};
+
+struct ball
+{
+	GLuint vao;
+	glm::vec2 origin;
+	glm::vec2 current_pos;
+};
+
+// Function prototypes
+GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
+GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void init_paddle(paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void init_ball(ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void key_callback(GLFWwindow*, int, int, int, int);
+void handle_player_keyboard_input();
+void handle_player_controller_input();
 
 int main(void)
 {
@@ -61,7 +79,13 @@ int main(void)
 		2, 3, 0
 	};
 
-	GLuint paddle_vao = build_vao(paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
+	paddle paddle_player;
+	init_paddle(&paddle_player, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
+	paddle_player.origin = glm::vec2(-0.95f, 0.0f);
+	
+	paddle paddle_computer;
+	init_paddle(&paddle_computer, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
+	paddle_computer.origin = glm::vec2(0.95f, 0.0f);
 
 	last_time = (float) glfwGetTime();
 	
@@ -71,24 +95,30 @@ int main(void)
 		glfwPollEvents();
 		handle_player_keyboard_input();
 
-		delta_time = ((float)glfwGetTime() - last_time) * 100.0f;
-		last_time = (float) glfwGetTime();
-
-		//printf("DELTA TIME: %f\n", delta_time);
-
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		delta_time = (float) (glfwGetTime() - last_time) * 100.0f;
+		last_time = (float) glfwGetTime();
+
 		glUseProgram(shader_program_id);
-		glBindVertexArray(paddle_vao);
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), -0.95f, left_paddle_y_offset);
+
+		glBindVertexArray(paddle_player.vao);
+		paddle_player.current_pos = glm::vec2(paddle_player.origin.x, paddle_player.origin.y + left_paddle_y_offset);
+		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_player.current_pos.x, paddle_player.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), 0.95f, cos((float)glfwGetTime()));
+
+		glBindVertexArray(paddle_computer.vao);
+		paddle_computer.current_pos = glm::vec2(paddle_computer.origin.x, paddle_computer.origin.y + cos((float)glfwGetTime()));
+		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.current_pos.x, paddle_computer.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
 		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
 	}
+
+	glfwDestroyWindow(window);
 
 	return 0;
 }
@@ -129,6 +159,16 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	glBindVertexArray(0);
 
 	return vao;
+}
+
+void init_paddle(paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
+{
+	paddle->vao = build_vao(vertices, vertices_size, indices, indices_size);
+}
+
+void init_ball(ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
+{
+	ball->vao = build_vao(vertices, vertices_size, indices, indices_size);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
