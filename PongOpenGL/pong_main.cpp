@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <SOIL.h>
+#include <math.h>
 #include "shader.h"
 #include "glfw_x360_controller.h"
 
@@ -16,6 +17,8 @@
 float delta_time = 0.0f;
 float last_time = 0.0f;
 float left_paddle_y_offset = 0.0f;
+float ball_horizontal_speed = 0.005f;
+float ball_horizontal_speed_increment = 0.001f;
 bool keys[1024];
 
 struct Paddle
@@ -30,7 +33,7 @@ struct Ball
 	GLuint vao;
 	glm::vec2 origin;
 	glm::vec2 current_pos;
-	bool is_moving_left;
+	bool is_moving_right;
 	bool is_moving_up;
 };
 
@@ -111,7 +114,7 @@ int main(void)
 	init_ball(&ball, ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
 	ball.origin = glm::vec2(0.0f, 0.0f);
 	ball.current_pos = ball.origin;
-	ball.is_moving_left = true;
+	ball.is_moving_right = false;
 	ball.is_moving_up = true;
 
 	last_time = (float) glfwGetTime();
@@ -128,20 +131,30 @@ int main(void)
 		delta_time = (float) (glfwGetTime() - last_time) * 100.0f;
 		last_time = (float) glfwGetTime();
 
+		// Calculate current position of each object 
+		paddle_player.current_pos = glm::vec2(paddle_player.origin.x, paddle_player.origin.y + left_paddle_y_offset);
+		paddle_computer.current_pos = glm::vec2(paddle_computer.origin.x, paddle_computer.origin.y + cos((float)glfwGetTime()));
+		calculate_ball_position(&ball, delta_time, ball_width, ball_height);
+
+		// COLLISION DETECTION GOES HERE
+		if (ball.current_pos.x - (ball_width / 2) < paddle_player.current_pos.x &&
+			(ball.current_pos.y - (ball_height / 2)) < (paddle_player.current_pos.y + (paddle_height / 2)) &&
+			(ball.current_pos.y + (ball_height / 2)) > (paddle_player.current_pos.y - (paddle_height / 2)))
+		{
+			ball.is_moving_right = false;
+		}
+
 		glUseProgram(shader_program_id);
 
 		glBindVertexArray(paddle_player.vao);
-		paddle_player.current_pos = glm::vec2(paddle_player.origin.x, paddle_player.origin.y + left_paddle_y_offset);
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_player.current_pos.x, paddle_player.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(paddle_computer.vao);
-		paddle_computer.current_pos = glm::vec2(paddle_computer.origin.x, paddle_computer.origin.y + cos((float)glfwGetTime()));
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.current_pos.x, paddle_computer.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(ball.vao);
-		calculate_ball_position(&ball, delta_time, ball_width, ball_height);
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.current_pos.x, ball.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -205,20 +218,22 @@ void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indi
 
 void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height)
 {
-	if (ball->is_moving_left)
+	if (ball->is_moving_right)
 	{
-		ball->current_pos.x -=  0.008f * delta_time;
+		ball->current_pos.x -=  ball_horizontal_speed * delta_time;
 		if (ball->current_pos.x < (-1.0f + (ball_width / 2)))
 		{
-			ball->is_moving_left = false;
+			ball->is_moving_right = false;
+			ball_horizontal_speed += ball_horizontal_speed_increment;
 		}
 	}
 	else
 	{
-		ball->current_pos.x += 0.008f * delta_time;
+		ball->current_pos.x += ball_horizontal_speed * delta_time;
 		if (ball->current_pos.x > (1.0f - (ball_width / 2)))
 		{
-			ball->is_moving_left = true;
+			ball->is_moving_right = true;
+			ball_horizontal_speed += ball_horizontal_speed_increment;
 		}
 	}
 
