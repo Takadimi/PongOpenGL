@@ -18,25 +18,28 @@ float last_time = 0.0f;
 float left_paddle_y_offset = 0.0f;
 bool keys[1024];
 
-struct paddle
+struct Paddle
 {
 	GLuint vao;
 	glm::vec2 origin;
 	glm::vec2 current_pos;
 };
 
-struct ball
+struct Ball
 {
 	GLuint vao;
 	glm::vec2 origin;
 	glm::vec2 current_pos;
+	bool is_moving_left;
+	bool is_moving_up;
 };
 
 // Function prototypes
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void init_paddle(paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void init_ball(ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void init_paddle(Paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height);
 void key_callback(GLFWwindow*, int, int, int, int);
 void handle_player_keyboard_input();
 void handle_player_controller_input();
@@ -67,11 +70,14 @@ int main(void)
 	glDeleteShader(vert_shader_id);
 	glDeleteShader(frag_shader_id);
 
+	const GLfloat paddle_width = 0.04f;
+	const GLfloat paddle_height = 0.5f;
+
 	GLfloat paddle_vertices[] = {
-		 0.02f,  0.25f, 1.0f, 1.0f, 1.0f,
-		 0.02f, -0.25f, 1.0f, 1.0f, 1.0f,
-		-0.02f, -0.25f, 1.0f, 1.0f, 1.0f,
-		-0.02f,  0.25f, 1.0f, 1.0f, 1.0f,
+		 (paddle_width / 2),  (paddle_height / 2), 1.0f, 1.0f, 1.0f,
+		 (paddle_width / 2), -(paddle_height / 2), 1.0f, 1.0f, 1.0f,
+		-(paddle_width / 2), -(paddle_height / 2), 1.0f, 1.0f, 1.0f,
+		-(paddle_width / 2),  (paddle_height / 2), 1.0f, 1.0f, 1.0f,
 	};
 
 	GLuint paddle_indices[] = {
@@ -79,19 +85,21 @@ int main(void)
 		2, 3, 0
 	};
 
-	paddle paddle_player;
+	Paddle paddle_player;
 	init_paddle(&paddle_player, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
 	paddle_player.origin = glm::vec2(-0.95f, 0.0f);
 	
-	paddle paddle_computer;
+	Paddle paddle_computer;
 	init_paddle(&paddle_computer, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
 	paddle_computer.origin = glm::vec2(0.95f, 0.0f);
 
+	const GLfloat ball_width = 0.06f;
+	const GLfloat ball_height = 0.08f;
 	GLfloat ball_vertices[] = {
-		 0.03f,  0.04f, 0.2f, 0.4f, 0.6f,
-		 0.03f, -0.04f, 0.2f, 0.4f, 0.6f,
-		-0.03f, -0.04f, 0.2f, 0.4f, 0.6f,
-		-0.03f,  0.04f, 0.2f, 0.4f, 0.6f,
+		 (ball_width / 2),  (ball_height / 2), 0.2f, 0.7f, 0.6f,
+		 (ball_width / 2), -(ball_height / 2), 0.2f, 0.7f, 0.6f,
+		-(ball_width / 2), -(ball_height / 2), 0.2f, 0.7f, 0.6f,
+		-(ball_width / 2),  (ball_height / 2), 0.2f, 0.7f, 0.6f,
 	};
 
 	GLuint ball_indices[] = {
@@ -99,9 +107,12 @@ int main(void)
 		2, 3, 0
 	};
 
-	ball ball;
+	Ball ball;
 	init_ball(&ball, ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
 	ball.origin = glm::vec2(0.0f, 0.0f);
+	ball.current_pos = ball.origin;
+	ball.is_moving_left = true;
+	ball.is_moving_up = true;
 
 	last_time = (float) glfwGetTime();
 	
@@ -111,7 +122,7 @@ int main(void)
 		glfwPollEvents();
 		handle_player_keyboard_input();
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		delta_time = (float) (glfwGetTime() - last_time) * 100.0f;
@@ -130,8 +141,8 @@ int main(void)
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(ball.vao);
-		// Compute the back and forth motion of the ball here!
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.origin.x, ball.origin.y);
+		calculate_ball_position(&ball, delta_time, ball_width, ball_height);
+		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.current_pos.x, ball.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(0);
@@ -182,14 +193,51 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	return vao;
 }
 
-void init_paddle(paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
+void init_paddle(Paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
 {
 	paddle->vao = build_vao(vertices, vertices_size, indices, indices_size);
 }
 
-void init_ball(ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
+void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
 {
 	ball->vao = build_vao(vertices, vertices_size, indices, indices_size);
+}
+
+void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height)
+{
+	if (ball->is_moving_left)
+	{
+		ball->current_pos.x -=  0.008f * delta_time;
+		if (ball->current_pos.x < (-1.0f + (ball_width / 2)))
+		{
+			ball->is_moving_left = false;
+		}
+	}
+	else
+	{
+		ball->current_pos.x += 0.008f * delta_time;
+		if (ball->current_pos.x > (1.0f - (ball_width / 2)))
+		{
+			ball->is_moving_left = true;
+		}
+	}
+
+	if (ball->is_moving_up)
+	{
+		ball->current_pos.y += 0.005f * delta_time;
+		if (ball->current_pos.y > (1.0f - (ball_height / 2)))
+		{
+			ball->is_moving_up = false;
+		}
+	}
+	else
+	{
+		ball->current_pos.y -= 0.005f * delta_time;
+		if (ball->current_pos.y < (-1.0f + (ball_height / 2)))
+		{
+			ball->is_moving_up = true;
+		}
+	}
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
