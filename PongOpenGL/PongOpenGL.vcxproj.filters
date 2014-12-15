@@ -25,6 +25,8 @@
   <ItemGroup>
     <None Include="shader.vert" />
     <None Include="shader.frag" />
+    <None Include="sprite_shader.vert" />
+    <None Include="sprite_shader.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -33,5 +35,10 @@
     <ClInclude Include="glfw_x360_controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="numbers_sprite_sheet.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

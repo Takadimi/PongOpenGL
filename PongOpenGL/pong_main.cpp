@@ -4,7 +4,6 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <SOIL.h>
-#include <math.h>
 #include "shader.h"
 #include "glfw_x360_controller.h"
 
@@ -37,12 +36,29 @@ struct Ball
 	bool is_moving_up;
 };
 
+struct Score_Image
+{
+	GLint width;
+	GLint height;
+	unsigned char* image_data;
+};
+
+struct Score_Sprite
+{
+	GLuint vao;
+	GLuint texture;
+};
+
 // Function prototypes
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
+GLuint build_sprite_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
 void init_paddle(Paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
 void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
 void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height);
+void load_image(Score_Image* texture, const char* texture_file_path);
+GLuint create_sprite(unsigned char* image_byte_array, const unsigned int width_offset, const unsigned int height_offset);
+void dispose_of_image(unsigned char* image_byte_array);
 void key_callback(GLFWwindow*, int, int, int, int);
 void handle_player_keyboard_input();
 void handle_player_controller_input();
@@ -64,7 +80,14 @@ int main(void)
 	glewInit();
 
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	Score_Image score_sprite_sheet;
+	load_image(&score_sprite_sheet, "numbers_sprite_sheet.png");
+
+	GLuint number_one_texture = create_sprite(score_sprite_sheet.image_data, score_sprite_sheet.width, score_sprite_sheet.height);
+	dispose_of_image(score_sprite_sheet.image_data);
 
 	GLuint vert_shader_id = buildShader("shader.vert", GL_VERTEX_SHADER);
 	GLuint frag_shader_id = buildShader("shader.frag", GL_FRAGMENT_SHADER);
@@ -72,6 +95,29 @@ int main(void)
 
 	glDeleteShader(vert_shader_id);
 	glDeleteShader(frag_shader_id);
+
+	GLuint sprite_vert_shader_id = buildShader("sprite_shader.vert", GL_VERTEX_SHADER);
+	GLuint sprite_frag_shader_id = buildShader("sprite_shader.frag", GL_FRAGMENT_SHADER);
+	GLuint sprite_shader_program_id = buildProgram(sprite_vert_shader_id, sprite_frag_shader_id);
+
+	glDeleteShader(sprite_vert_shader_id);
+	glDeleteShader(sprite_frag_shader_id);
+
+	GLfloat score_card_vertices[] = {
+		-0.2f,  0.2f, 0.0f, 1.0f,
+		 0.2f,  0.2f, 1.0f, 1.0f,
+		 0.2f, -0.2f, 1.0f, 0.0f,
+		-0.2f, -0.2f, 0.0f, 0.0f
+	};
+
+	GLuint score_card_indices[] = {
+		0, 1, 2,
+		2, 3, 0
+	};
+
+	Score_Sprite number_one;
+	number_one.vao = build_sprite_vao(score_card_vertices, sizeof(score_card_vertices), score_card_indices, sizeof(score_card_indices));
+	number_one.texture = number_one_texture;
 
 	const GLfloat paddle_width = 0.04f;
 	const GLfloat paddle_height = 0.5f;
@@ -144,6 +190,7 @@ int main(void)
 			ball.is_moving_right = false;
 		}
 
+		// Drawing paddles and ball
 		glUseProgram(shader_program_id);
 
 		glBindVertexArray(paddle_player.vao);
@@ -158,6 +205,16 @@ int main(void)
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.current_pos.x, ball.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
+		glBindVertexArray(0);
+
+		// Drawing score card texture
+		glUseProgram(sprite_shader_program_id);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, number_one.texture);
+		glUniform1i(glGetUniformLocation(sprite_shader_program_id, "sprite_texture"), 0);
+
+		glBindVertexArray(number_one.vao);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
@@ -199,6 +256,37 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	glEnableVertexAttribArray(0);
 
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+	glBindVertexArray(0);
+
+	return vao;
+}
+
+GLuint build_sprite_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
+{
+	GLuint vao, vbo;
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+	if (indices != NULL && indices_size != NULL)
+	{
+		GLuint ebo;
+		glGenBuffers(1, &ebo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	}
+
+	glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
 	glBindVertexArray(0);
@@ -253,6 +341,42 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 			ball->is_moving_up = true;
 		}
 	}
+}
+
+void load_image(Score_Image* image, const char* texture_file_path)
+{
+	image->image_data = SOIL_load_image(texture_file_path, &(image->width), &(image->height), 0, SOIL_LOAD_RGBA);
+
+	if (image->image_data == NULL)
+	{
+		printf("Error loading score sprite sheet!\n");
+	}
+}
+
+GLuint create_sprite(unsigned char* image_byte_array, const unsigned int width_offset, const unsigned int height_offset)
+{
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// Set texture parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// Set texture filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_offset, height_offset, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_byte_array);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return texture;
+}
+
+void dispose_of_image(unsigned char* image_byte_array)
+{
+	SOIL_free_image_data(image_byte_array);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)

@@ -85,10 +85,15 @@
   <ItemGroup>
     <None Include="shader.frag" />
     <None Include="shader.vert" />
+    <None Include="sprite_shader.frag" />
+    <None Include="sprite_shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="glfw_x360_controller.h" />
     <ClInclude Include="shader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="numbers_sprite_sheet.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
