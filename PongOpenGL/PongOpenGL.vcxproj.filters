@@ -35,9 +35,15 @@
     <ClInclude Include="glfw_x360_controller.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="pong_main.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="numbers_sprite_sheet.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="pong_scores.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

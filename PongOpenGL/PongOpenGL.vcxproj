@@ -90,10 +90,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="glfw_x360_controller.h" />
+    <ClInclude Include="pong_main.h" />
     <ClInclude Include="shader.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="numbers_sprite_sheet.png" />
+    <Image Include="pong_scores.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

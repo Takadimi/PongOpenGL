@@ -1,67 +1,7 @@
-#define GLEW_STATIC
-#include <GL/glew.h>
-
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
+#include "pong_main.h"
 #include <SOIL.h>
 #include "shader.h"
 #include "glfw_x360_controller.h"
-
-#define MONITOR_WIDTH 1920
-#define MONITOR_HEIGHT 1080
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
-
-// GLOBALS
-float delta_time = 0.0f;
-float last_time = 0.0f;
-float left_paddle_y_offset = 0.0f;
-float ball_horizontal_speed = 0.005f;
-float ball_horizontal_speed_increment = 0.001f;
-bool keys[1024];
-
-struct Paddle
-{
-	GLuint vao;
-	glm::vec2 origin;
-	glm::vec2 current_pos;
-};
-
-struct Ball
-{
-	GLuint vao;
-	glm::vec2 origin;
-	glm::vec2 current_pos;
-	bool is_moving_right;
-	bool is_moving_up;
-};
-
-struct Score_Image
-{
-	GLint width;
-	GLint height;
-	unsigned char* image_data;
-};
-
-struct Score_Sprite
-{
-	GLuint vao;
-	GLuint texture;
-};
-
-// Function prototypes
-GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
-GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-GLuint build_sprite_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void init_paddle(Paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height);
-void load_image(Score_Image* texture, const char* texture_file_path);
-GLuint create_sprite(unsigned char* image_byte_array, const unsigned int width_offset, const unsigned int height_offset);
-void dispose_of_image(unsigned char* image_byte_array);
-void key_callback(GLFWwindow*, int, int, int, int);
-void handle_player_keyboard_input();
-void handle_player_controller_input();
 
 int main(void)
 {
@@ -84,7 +24,7 @@ int main(void)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	Score_Image score_sprite_sheet;
-	load_image(&score_sprite_sheet, "numbers_sprite_sheet.png");
+	load_image(&score_sprite_sheet, "pong_scores.png");
 
 	GLuint number_one_texture = create_sprite(score_sprite_sheet.image_data, score_sprite_sheet.width, score_sprite_sheet.height);
 	dispose_of_image(score_sprite_sheet.image_data);
@@ -104,10 +44,10 @@ int main(void)
 	glDeleteShader(sprite_frag_shader_id);
 
 	GLfloat score_card_vertices[] = {
-		-0.2f,  0.2f, 0.0f, 1.0f,
-		 0.2f,  0.2f, 1.0f, 1.0f,
-		 0.2f, -0.2f, 1.0f, 0.0f,
-		-0.2f, -0.2f, 0.0f, 0.0f
+		-0.3f,  0.3f, 0.0f, 1.0f,
+		 0.3f,  0.3f, 1.0f, 1.0f,
+		 0.3f, -0.3f, 1.0f, 0.0f,
+		-0.3f, -0.3f, 0.0f, 0.0f
 	};
 
 	GLuint score_card_indices[] = {
@@ -225,6 +165,11 @@ int main(void)
 	return 0;
 }
 
+GLuint build_vao(Vao_Data data)
+{
+	return build_vao(data.vertices, data.vertices_size, data.indices, data.indices_size);
+}
+
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size)
 {
 	GLuint vao = build_vao(vertices, vertices_size, NULL, NULL);
@@ -263,6 +208,7 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	return vao;
 }
 
+// TODO (Ethan): Factor this back into the build_vao function by adding arguments for attrib pointer size
 GLuint build_sprite_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
 {
 	GLuint vao, vbo;
