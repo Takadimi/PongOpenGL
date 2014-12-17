@@ -23,41 +23,12 @@ int main(void)
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	Score_Image score_sprite_sheet;
-	load_image(&score_sprite_sheet, "pong_scores.png");
-
-	GLuint number_one_texture = create_sprite(score_sprite_sheet.image_data, score_sprite_sheet.width, score_sprite_sheet.height);
-	dispose_of_image(score_sprite_sheet.image_data);
-
 	GLuint vert_shader_id = buildShader("shader.vert", GL_VERTEX_SHADER);
 	GLuint frag_shader_id = buildShader("shader.frag", GL_FRAGMENT_SHADER);
 	GLuint shader_program_id = buildProgram(vert_shader_id, frag_shader_id);
 
 	glDeleteShader(vert_shader_id);
 	glDeleteShader(frag_shader_id);
-
-	GLuint sprite_vert_shader_id = buildShader("sprite_shader.vert", GL_VERTEX_SHADER);
-	GLuint sprite_frag_shader_id = buildShader("sprite_shader.frag", GL_FRAGMENT_SHADER);
-	GLuint sprite_shader_program_id = buildProgram(sprite_vert_shader_id, sprite_frag_shader_id);
-
-	glDeleteShader(sprite_vert_shader_id);
-	glDeleteShader(sprite_frag_shader_id);
-
-	GLfloat score_card_vertices[] = {
-		-0.3f,  0.3f, 0.0f, 1.0f,
-		 0.3f,  0.3f, 1.0f, 1.0f,
-		 0.3f, -0.3f, 1.0f, 0.0f,
-		-0.3f, -0.3f, 0.0f, 0.0f
-	};
-
-	GLuint score_card_indices[] = {
-		0, 1, 2,
-		2, 3, 0
-	};
-
-	Score_Sprite number_one;
-	number_one.vao = build_sprite_vao(score_card_vertices, sizeof(score_card_vertices), score_card_indices, sizeof(score_card_indices));
-	number_one.texture = number_one_texture;
 
 	const GLfloat paddle_width = 0.04f;
 	const GLfloat paddle_height = 0.5f;
@@ -74,13 +45,9 @@ int main(void)
 		2, 3, 0
 	};
 
-	Paddle paddle_player;
-	init_paddle(&paddle_player, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
-	paddle_player.origin = glm::vec2(-0.95f, 0.0f);
-	
-	Paddle paddle_computer;
-	init_paddle(&paddle_computer, paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
-	paddle_computer.origin = glm::vec2(0.95f, 0.0f);
+	Vao_Data paddle_vao_data = { paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices) };
+	Paddle paddle_player = { build_vao(paddle_vao_data), glm::vec2(-0.95f, 0.0f), glm::vec2(0.0f, 0.0f) };
+	Paddle paddle_computer = { build_vao(paddle_vao_data), glm::vec2(0.95f, 0.0f), glm::vec2(0.0f, 0.0f) };
 
 	const GLfloat ball_width = 0.06f;
 	const GLfloat ball_height = 0.08f;
@@ -96,12 +63,8 @@ int main(void)
 		2, 3, 0
 	};
 
-	Ball ball;
-	init_ball(&ball, ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
-	ball.origin = glm::vec2(0.0f, 0.0f);
-	ball.current_pos = ball.origin;
-	ball.is_moving_right = false;
-	ball.is_moving_up = true;
+	Vao_Data ball_vao_data = { ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices) };
+	Ball ball = { build_vao(ball_vao_data), glm::vec2(0.0f, 0.0f), glm::vec2(0.0f, 0.0f), true, true };
 
 	last_time = (float) glfwGetTime();
 	
@@ -127,7 +90,7 @@ int main(void)
 			(ball.current_pos.y - (ball_height / 2)) < (paddle_player.current_pos.y + (paddle_height / 2)) &&
 			(ball.current_pos.y + (ball_height / 2)) > (paddle_player.current_pos.y - (paddle_height / 2)))
 		{
-			ball.is_moving_right = false;
+			ball.is_moving_left = false;
 		}
 
 		// Drawing paddles and ball
@@ -145,16 +108,6 @@ int main(void)
 		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.current_pos.x, ball.current_pos.y);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		glBindVertexArray(0);
-
-		// Drawing score card texture
-		glUseProgram(sprite_shader_program_id);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, number_one.texture);
-		glUniform1i(glGetUniformLocation(sprite_shader_program_id, "sprite_texture"), 0);
-
-		glBindVertexArray(number_one.vao);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
@@ -208,56 +161,14 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	return vao;
 }
 
-// TODO (Ethan): Factor this back into the build_vao function by adding arguments for attrib pointer size
-GLuint build_sprite_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
-{
-	GLuint vao, vbo;
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-	if (indices != NULL && indices_size != NULL)
-	{
-		GLuint ebo;
-		glGenBuffers(1, &ebo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	}
-
-	glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	glBindVertexArray(0);
-
-	return vao;
-}
-
-void init_paddle(Paddle* paddle, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
-{
-	paddle->vao = build_vao(vertices, vertices_size, indices, indices_size);
-}
-
-void init_ball(Ball* ball, GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size)
-{
-	ball->vao = build_vao(vertices, vertices_size, indices, indices_size);
-}
-
 void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height)
 {
-	if (ball->is_moving_right)
+	if (ball->is_moving_left)
 	{
 		ball->current_pos.x -=  ball_horizontal_speed * delta_time;
 		if (ball->current_pos.x < (-1.0f + (ball_width / 2)))
 		{
-			ball->is_moving_right = false;
+			ball->is_moving_left = false;
 			ball_horizontal_speed += ball_horizontal_speed_increment;
 		}
 	}
@@ -266,7 +177,7 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 		ball->current_pos.x += ball_horizontal_speed * delta_time;
 		if (ball->current_pos.x > (1.0f - (ball_width / 2)))
 		{
-			ball->is_moving_right = true;
+			ball->is_moving_left = true;
 			ball_horizontal_speed += ball_horizontal_speed_increment;
 		}
 	}
@@ -287,42 +198,6 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 			ball->is_moving_up = true;
 		}
 	}
-}
-
-void load_image(Score_Image* image, const char* texture_file_path)
-{
-	image->image_data = SOIL_load_image(texture_file_path, &(image->width), &(image->height), 0, SOIL_LOAD_RGBA);
-
-	if (image->image_data == NULL)
-	{
-		printf("Error loading score sprite sheet!\n");
-	}
-}
-
-GLuint create_sprite(unsigned char* image_byte_array, const unsigned int width_offset, const unsigned int height_offset)
-{
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	// Set texture parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// Set texture filtering
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_offset, height_offset, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_byte_array);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return texture;
-}
-
-void dispose_of_image(unsigned char* image_byte_array)
-{
-	SOIL_free_image_data(image_byte_array);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
