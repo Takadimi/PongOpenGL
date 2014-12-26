@@ -1,4 +1,5 @@
 #include "pong_main.h"
+#include <ctime>
 #include <SOIL.h>
 #include "shader.h"
 #include "glfw_x360_controller.h"
@@ -34,7 +35,7 @@ int main(void)
 	// INITIALIZE VAOS
 
 	// PADDLES 
-	const GLfloat paddle_width = 0.04f;
+	const GLfloat paddle_width	= 0.04f;
 	const GLfloat paddle_height = 0.5f;
 
 	GLfloat paddle_vertices[] = {
@@ -52,8 +53,8 @@ int main(void)
 	GLuint paddle_vao = build_vao(paddle_vertices, sizeof(paddle_vertices), paddle_indices, sizeof(paddle_indices));
 
 	// BALL
-	const GLfloat ball_width = 0.06f;
-	const GLfloat ball_height = 0.08f;
+	const GLfloat ball_width	= 0.06f;
+	const GLfloat ball_height	= 0.08f;
 
 	GLfloat ball_vertices[] = {
 		 (ball_width / 2),  (ball_height / 2), 0.2f, 0.7f, 0.6f,
@@ -70,10 +71,11 @@ int main(void)
 	GLuint ball_vao = build_vao(ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
 
 	// INITIALIZE GAME OBJECTS
-	Paddle paddle_player = { PLAYER, paddle_vao, glm::vec2(-0.95f, 0.0f) };
-	Paddle paddle_computer = { COMPUTER, paddle_vao, glm::vec2(0.95f, 0.0f) };
-	Ball ball = { ball_vao, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
+	Paddle paddle_player	= { PLAYER, paddle_vao, glm::vec2(-0.95f, 0.0f) };
+	Paddle paddle_computer	= { COMPUTER, paddle_vao, glm::vec2(0.95f, 0.0f) };
+	Ball ball				= { ball_vao, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
 
+	srand(time(0));
 	last_time = (float) glfwGetTime();
 	
 	/* MAIN GAME LOOP */
@@ -88,20 +90,24 @@ int main(void)
 		delta_time = (float)(glfwGetTime() - last_time) * 100.0f;
 		last_time = (float)glfwGetTime();
 
+		// TODO: Clean this up
+		if (last_time - ball_pause_time > 1.0f)
+		{
+			ball_moving = true;
+		}
+
 		/******* UPDATE *******/
 
 		// COMPUTER PADDLE AI
-		// TODO: Maybe introduce a variable by which we offset the y-position
-		// the computer aims for by a value between [0.4f, -0.4f].
-		// This should allow for the computer to make something other than shots that come
-		// off the dead center of its paddle...
+		float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
+
 		if (ball.is_moving_right)
 		{
-			if (paddle_computer.position.y > ball.position.y)
+			if (paddle_computer.position.y > ball.position.y + computer_paddle_target_offset)
 			{
 				computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
 			}
-			else if (paddle_computer.position.y < ball.position.y)
+			else if (paddle_computer.position.y < ball.position.y - computer_paddle_target_offset)
 			{
 				computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
 			}
@@ -120,7 +126,11 @@ int main(void)
 
 		paddle_player.position.y = player_paddle_y_offset;
 		paddle_computer.position.y = computer_paddle_y_offset;
-		calculate_ball_position(&ball, delta_time, ball_width, ball_height);
+
+		if (ball_moving)
+		{
+			calculate_ball_position(&ball, delta_time, ball_width, ball_height);
+		}
 
 		// COLLISION DETECTION GOES HERE
 		if (ball.is_moving_right)
@@ -206,7 +216,9 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 		ball->position.x += ball->x_speed * delta_time;
 		if (ball->position.x > (1.0f - (ball_width / 2)))
 		{
-			ball->is_moving_right = false;
+			player_score++;
+			reset_ball(ball);
+			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
 		}
 	}
 	else
@@ -214,7 +226,9 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 		ball->position.x -=  ball->x_speed * delta_time;
 		if (ball->position.x < (-1.0f + (ball_width / 2)))
 		{
-			ball->is_moving_right = true;
+			computer_score++;
+			reset_ball(ball);
+			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
 		}
 	}
 
@@ -227,13 +241,22 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 	}
 }
 
+void reset_ball(Ball* ball)
+{
+	ball->position.x = 0.0f;
+	ball->position.y = 0.0f;
+	ball->x_speed = 0.008f;
+	ball_moving = false;
+	ball_pause_time = glfwGetTime();
+}
+
 void handle_collision(Ball* ball, Paddle* paddle, float ball_width, float ball_height, float paddle_width, float paddle_height)
 {
-	const float dir_one_offset = -0.01f;
-	const float dir_two_offset = -0.005f;
+	const float dir_one_offset = -0.0125f;
+	const float dir_two_offset = -0.0075f;
 	const float dir_three_offset = 0.0f;
-	const float dir_four_offset = 0.005f;
-	const float dir_five_offset = 0.01f;
+	const float dir_four_offset = 0.0075f;
+	const float dir_five_offset = 0.0125f;
 
 	const float ball_paddle_offset = ball->position.y - paddle->position.y;
 
