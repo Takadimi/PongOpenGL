@@ -12,16 +12,6 @@
 
 // GLOBALS
 bool game_in_progress				= false;
-float delta_time					= 0.0f;
-float ball_pause_time				= 0.0f;
-float last_time						= 0.0f;
-unsigned int player_score			= 0;
-unsigned int computer_score			= 0;
-bool ball_moving					= false;
-float player_paddle_y_offset		= 0.0f;
-float computer_paddle_y_offset		= 0.0f;
-float player_paddle_y_velocity		= 0.015f;
-float computer_paddle_y_velocity	= 0.02055f;
 bool keys[1024];
 
 enum Paddle_Type
@@ -37,6 +27,7 @@ struct Paddle
 	Paddle_Type type;
 	GLuint vao;
 	glm::vec2 position;
+	float y_offset;
 };
 
 struct Ball
@@ -49,14 +40,29 @@ struct Ball
 	bool is_moving_up;
 };
 
+struct Game_State
+{
+	float delta_time					= 0.0f;
+	float ball_pause_time				= 0.0f;
+	float last_time						= 0.0f;
+	unsigned int player_score			= 0;
+	unsigned int computer_score			= 0;
+	bool ball_moving					= false;
+	float player_paddle_y_velocity		= 0.015f;
+	float computer_paddle_y_velocity	= 0.02055f;
+	Paddle player;
+	Paddle computer;
+	Ball ball;
+};
+
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
-void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height);
-void reset_ball(Ball* ball);
+void calculate_ball_position(Game_State* gs, GLfloat ball_width, GLfloat ball_height);
+void reset_ball(Game_State* gs);
 void handle_collision(Ball* ball, Paddle* paddle, float ball_width, float ball_height, float paddle_width, float paddle_height);
 bool is_intersecting_on_y_axis(Ball* ball, Paddle* paddle, float ball_height, float paddle_height);
 bool is_intersecting_on_x_axis(Ball* ball, Paddle* paddle, float ball_width, float paddle_width);
-void reset_game();
+void reset_game(Game_State* gs);
 void key_callback(GLFWwindow*, int, int, int, int);
-void handle_player_keyboard_input();
-void handle_player_controller_input();
+void handle_player_keyboard_input(Game_State* gs);
+void handle_player_controller_input(Paddle* player);

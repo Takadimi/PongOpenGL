@@ -70,32 +70,34 @@ int main(void)
 
 	GLuint ball_vao = build_vao(ball_vertices, sizeof(ball_vertices), ball_indices, sizeof(ball_indices));
 
+	Game_State game_state;
+
 	// INITIALIZE GAME OBJECTS
-	Paddle paddle_player	= { PLAYER, paddle_vao, glm::vec2(-0.95f, 0.0f) };
-	Paddle paddle_computer	= { COMPUTER, paddle_vao, glm::vec2(0.95f, 0.0f) };
-	Ball ball				= { ball_vao, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
+	game_state.player	= { PLAYER, paddle_vao, glm::vec2(-0.95f, 0.0f), 0.0f };
+	game_state.computer	= { COMPUTER, paddle_vao, glm::vec2(0.95f, 0.0f), 0.0f };
+	game_state.ball		= { ball_vao, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
 
 	srand(time(0));
-	last_time = (float) glfwGetTime();
+	game_state.last_time = (float) glfwGetTime();
 	
 	/* MAIN GAME LOOP */
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-		handle_player_keyboard_input();
+		handle_player_keyboard_input(&game_state);
 
 		glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		delta_time = (float)(glfwGetTime() - last_time) * 100.0f;
-		last_time = (float)glfwGetTime();
+		game_state.delta_time = (float)(glfwGetTime() - game_state.last_time) * 100.0f;
+		game_state.last_time = (float)glfwGetTime();
 
 		if (game_in_progress)
 		{
 			// TODO: Clean this up
-			if (last_time - ball_pause_time > 1.0f)
+			if (game_state.last_time - game_state.ball_pause_time > 1.0f)
 			{
-				ball_moving = true;
+				game_state.ball_moving = true;
 			}
 
 			/******* UPDATE *******/
@@ -103,45 +105,45 @@ int main(void)
 			// COMPUTER PADDLE AI
 			float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
 
-			if (ball.is_moving_right)
+			if (game_state.ball.is_moving_right)
 			{
-				if (paddle_computer.position.y > ball.position.y + computer_paddle_target_offset)
+				if (game_state.computer.position.y > game_state.ball.position.y + computer_paddle_target_offset)
 				{
-					computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+					game_state.computer.y_offset -= game_state.computer_paddle_y_velocity * game_state.delta_time;
 				}
-				else if (paddle_computer.position.y < ball.position.y - computer_paddle_target_offset)
+				else if (game_state.computer.position.y < game_state.ball.position.y - computer_paddle_target_offset)
 				{
-					computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+					game_state.computer.y_offset += game_state.computer_paddle_y_velocity * game_state.delta_time;
 				}
 			}
 			else
 			{
-				if (paddle_computer.position.y > 0.0f)
+				if (game_state.computer.position.y > 0.0f)
 				{
-					computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+					game_state.computer.y_offset -= game_state.computer_paddle_y_velocity * game_state.delta_time;
 				}
-				else if (paddle_computer.position.y < 0.0f)
+				else if (game_state.computer.position.y < 0.0f)
 				{
-					computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+					game_state.computer.y_offset += game_state.computer_paddle_y_velocity * game_state.delta_time;
 				}
 			}
 
-			paddle_player.position.y = player_paddle_y_offset;
-			paddle_computer.position.y = computer_paddle_y_offset;
+			game_state.player.position.y = game_state.player.y_offset;
+			game_state.computer.position.y = game_state.computer.y_offset;
 
-			if (ball_moving)
+			if (game_state.ball_moving)
 			{
-				calculate_ball_position(&ball, delta_time, ball_width, ball_height);
+				calculate_ball_position(&game_state, ball_width, ball_height);
 			}
 
 			// COLLISION DETECTION GOES HERE
-			if (ball.is_moving_right)
+			if (game_state.ball.is_moving_right)
 			{
-				handle_collision(&ball, &paddle_computer, ball_width, ball_height, paddle_width, paddle_height);
+				handle_collision(&game_state.ball, &game_state.computer, ball_width, ball_height, paddle_width, paddle_height);
 			}
 			else
 			{
-				handle_collision(&ball, &paddle_player, ball_width, ball_height, paddle_width, paddle_height);
+				handle_collision(&game_state.ball, &game_state.player, ball_width, ball_height, paddle_width, paddle_height);
 			}
 
 			/******* END UPDATE *******/
@@ -151,21 +153,25 @@ int main(void)
 			// Drawing paddles and ball
 			glUseProgram(shader_program_id);
 
-			glBindVertexArray(paddle_player.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_player.position.x, paddle_player.position.y);
+			glBindVertexArray(game_state.player.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.player.position.x, game_state.player.position.y);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-			glBindVertexArray(paddle_computer.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.position.x, paddle_computer.position.y);
+			glBindVertexArray(game_state.computer.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.computer.position.x, game_state.computer.position.y);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-			glBindVertexArray(ball.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.position.x, ball.position.y);
+			glBindVertexArray(game_state.ball.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.ball.position.x, game_state.ball.position.y);
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 			glBindVertexArray(0);
 
 			/******* END RENDER *******/
+		}
+		else
+		{
+			reset_game(&game_state);
 		}
 
 		glfwSwapBuffers(window);
@@ -212,53 +218,53 @@ GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuin
 	return vao;
 }
 
-void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width, GLfloat ball_height)
+void calculate_ball_position(Game_State* gs, GLfloat ball_width, GLfloat ball_height)
 {
-	if (ball->is_moving_right)
+	if (gs->ball.is_moving_right)
 	{
-		ball->position.x += ball->x_speed * delta_time;
-		if (ball->position.x > (1.0f - (ball_width / 2)))
+		gs->ball.position.x += gs->ball.x_speed * gs->delta_time;
+		if (gs->ball.position.x > (1.0f - (ball_width / 2)))
 		{
-			player_score++;
-			if (player_score == 5)
+			gs->player_score++;
+			if (gs->player_score == 5)
 			{
-				reset_game();
+				game_in_progress = false;
 			}
-			reset_ball(ball);
-			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
+			reset_ball(gs);
+			printf("PLAYER: %d CPU: %d\n", gs->player_score, gs->computer_score);
 		}
 	}
 	else
 	{
-		ball->position.x -=  ball->x_speed * delta_time;
-		if (ball->position.x < (-1.0f + (ball_width / 2)))
+		gs->ball.position.x -=  gs->ball.x_speed * gs->delta_time;
+		if (gs->ball.position.x < (-1.0f + (ball_width / 2)))
 		{
-			computer_score++;
-			if (computer_score == 5)
+			gs->computer_score++;
+			if (gs->computer_score == 5)
 			{
-				reset_game();
+				game_in_progress = false;
 			}
-			reset_ball(ball);
-			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
+			reset_ball(gs);
+			printf("PLAYER: %d CPU: %d\n", gs->player_score, gs->computer_score);
 		}
 	}
 
-	ball->position.y += ball->y_speed * delta_time;
+	gs->ball.position.y += gs->ball.y_speed * gs->delta_time;
 
-	if (ball->position.y > (1.0f - (ball_height / 2)) ||
-		ball->position.y < (-1.0f + (ball_height / 2)))
+	if (gs->ball.position.y > (1.0f - (ball_height / 2)) ||
+		gs->ball.position.y < (-1.0f + (ball_height / 2)))
 	{
-		ball->y_speed *= -1.0f;
+		gs->ball.y_speed *= -1.0f;
 	}
 }
 
-void reset_ball(Ball* ball)
+void reset_ball(Game_State* gs)
 {
-	ball->position.x = 0.0f;
-	ball->position.y = 0.0f;
-	ball->x_speed = 0.008f;
-	ball_moving = false;
-	ball_pause_time = glfwGetTime();
+	gs->ball.position.x = 0.0f;
+	gs->ball.position.y = 0.0f;
+	gs->ball.x_speed = 0.008f;
+	gs->ball_moving = false;
+	gs->ball_pause_time = glfwGetTime();
 }
 
 void handle_collision(Ball* ball, Paddle* paddle, float ball_width, float ball_height, float paddle_width, float paddle_height)
@@ -327,14 +333,13 @@ bool is_intersecting_on_x_axis(Ball* ball, Paddle* paddle, float ball_width, flo
 	return false;
 }
 
-void reset_game()
+void reset_game(Game_State* gs)
 {
-	player_score = 0;
-	computer_score = 0;
-	ball_moving = false;
-	player_paddle_y_offset = 0.0f;
-	computer_paddle_y_offset = 0.0f;
-	game_in_progress = false;
+	gs->player_score = 0;
+	gs->computer_score = 0;
+	gs->ball_moving = false;
+	gs->player.y_offset = 0.0f;
+	gs->computer.y_offset = 0.0f;
 
 	printf("PRESS 'N' TO START A NEW GAME OR 'Q' TO QUIT\n");
 }
@@ -371,19 +376,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-void handle_player_keyboard_input()
+void handle_player_keyboard_input(Game_State* gs)
 {
 	if (keys[GLFW_KEY_W])
 	{
-		player_paddle_y_offset += player_paddle_y_velocity * delta_time;
+		gs->player.y_offset += gs->player_paddle_y_velocity * gs->delta_time;
 	}
 	else if (keys[GLFW_KEY_S])
 	{
-		player_paddle_y_offset -= player_paddle_y_velocity * delta_time;
+		gs->player.y_offset -= gs->player_paddle_y_velocity * gs->delta_time;
 	}
 }
 
-void handle_player_controller_input()
+void handle_player_controller_input(Game_State* gs)
 {
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1))
 	{
@@ -393,11 +398,11 @@ void handle_player_controller_input()
 
 		if (button_pressed == X360_DPAD_UP)
 		{
-			player_paddle_y_offset += player_paddle_y_velocity * delta_time;
+			gs->player.y_offset += gs->player_paddle_y_velocity * gs->delta_time;
 		}
 		else if (button_pressed == X360_DPAD_DOWN)
 		{
-			player_paddle_y_offset -= player_paddle_y_velocity * delta_time;
+			gs->player.y_offset -= gs->player_paddle_y_velocity * gs->delta_time;
 		}
 	}
 }
