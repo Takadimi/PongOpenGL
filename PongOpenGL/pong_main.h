@@ -11,8 +11,9 @@
 #define SCREEN_HEIGHT 600
 
 // GLOBALS
-bool game_in_progress				= false;
+bool game_in_progress = false;
 bool keys[1024];
+GLuint shader_program_id;
 
 enum Paddle_Type
 {
@@ -26,6 +27,8 @@ struct Paddle
 {
 	Paddle_Type type;
 	GLuint vao;
+	float width;
+	float height;
 	glm::vec2 position;
 	float y_offset;
 };
@@ -33,6 +36,8 @@ struct Paddle
 struct Ball
 {
 	GLuint vao;
+	float width;
+	float height;
 	glm::vec2 position;
 	float x_speed;
 	float y_speed;
@@ -55,6 +60,7 @@ struct Game_State
 	Ball ball;
 };
 
+void game_update_and_render(Game_State* game_state);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size);
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size, GLuint* indices, GLuint indices_size);
 void calculate_ball_position(Game_State* gs, GLfloat ball_width, GLfloat ball_height);

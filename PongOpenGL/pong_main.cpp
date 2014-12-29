@@ -27,7 +27,7 @@ int main(void)
 
 	GLuint vert_shader_id = buildShader("shader.vert", GL_VERTEX_SHADER);
 	GLuint frag_shader_id = buildShader("shader.frag", GL_FRAGMENT_SHADER);
-	GLuint shader_program_id = buildProgram(vert_shader_id, frag_shader_id);
+	shader_program_id = buildProgram(vert_shader_id, frag_shader_id);
 
 	glDeleteShader(vert_shader_id);
 	glDeleteShader(frag_shader_id);
@@ -73,9 +73,9 @@ int main(void)
 	Game_State game_state;
 
 	// INITIALIZE GAME OBJECTS
-	game_state.player	= { PLAYER, paddle_vao, glm::vec2(-0.95f, 0.0f), 0.0f };
-	game_state.computer	= { COMPUTER, paddle_vao, glm::vec2(0.95f, 0.0f), 0.0f };
-	game_state.ball		= { ball_vao, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
+	game_state.player	= { PLAYER, paddle_vao, paddle_width, paddle_height, glm::vec2(-0.95f, 0.0f), 0.0f };
+	game_state.computer	= { COMPUTER, paddle_vao, paddle_width, paddle_height, glm::vec2(0.95f, 0.0f), 0.0f };
+	game_state.ball		= { ball_vao, ball_width, ball_height, glm::vec2(0.0f, 0.0f), 0.008f, 0.005f, false, true };
 
 	srand(time(0));
 	game_state.last_time = (float) glfwGetTime();
@@ -94,80 +94,7 @@ int main(void)
 
 		if (game_in_progress)
 		{
-			// TODO: Clean this up
-			if (game_state.last_time - game_state.ball_pause_time > 1.0f)
-			{
-				game_state.ball_moving = true;
-			}
-
-			/******* UPDATE *******/
-
-			// COMPUTER PADDLE AI
-			float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
-
-			if (game_state.ball.is_moving_right)
-			{
-				if (game_state.computer.position.y > game_state.ball.position.y + computer_paddle_target_offset)
-				{
-					game_state.computer.y_offset -= game_state.computer_paddle_y_velocity * game_state.delta_time;
-				}
-				else if (game_state.computer.position.y < game_state.ball.position.y - computer_paddle_target_offset)
-				{
-					game_state.computer.y_offset += game_state.computer_paddle_y_velocity * game_state.delta_time;
-				}
-			}
-			else
-			{
-				if (game_state.computer.position.y > 0.0f)
-				{
-					game_state.computer.y_offset -= game_state.computer_paddle_y_velocity * game_state.delta_time;
-				}
-				else if (game_state.computer.position.y < 0.0f)
-				{
-					game_state.computer.y_offset += game_state.computer_paddle_y_velocity * game_state.delta_time;
-				}
-			}
-
-			game_state.player.position.y = game_state.player.y_offset;
-			game_state.computer.position.y = game_state.computer.y_offset;
-
-			if (game_state.ball_moving)
-			{
-				calculate_ball_position(&game_state, ball_width, ball_height);
-			}
-
-			// COLLISION DETECTION GOES HERE
-			if (game_state.ball.is_moving_right)
-			{
-				handle_collision(&game_state.ball, &game_state.computer, ball_width, ball_height, paddle_width, paddle_height);
-			}
-			else
-			{
-				handle_collision(&game_state.ball, &game_state.player, ball_width, ball_height, paddle_width, paddle_height);
-			}
-
-			/******* END UPDATE *******/
-
-			/******* RENDER *******/
-
-			// Drawing paddles and ball
-			glUseProgram(shader_program_id);
-
-			glBindVertexArray(game_state.player.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.player.position.x, game_state.player.position.y);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			glBindVertexArray(game_state.computer.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.computer.position.x, game_state.computer.position.y);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			glBindVertexArray(game_state.ball.vao);
-			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), game_state.ball.position.x, game_state.ball.position.y);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-			glBindVertexArray(0);
-
-			/******* END RENDER *******/
+			game_update_and_render(&game_state);
 		}
 		else
 		{
@@ -180,6 +107,84 @@ int main(void)
 	glfwDestroyWindow(window);
 
 	return 0;
+}
+
+void game_update_and_render(Game_State* gs)
+{
+	// TODO: Clean this up
+	if (gs->last_time - gs->ball_pause_time > 1.0f)
+	{
+		gs->ball_moving = true;
+	}
+
+	/******* UPDATE *******/
+
+	// COMPUTER PADDLE AI
+	float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
+
+	if (gs->ball.is_moving_right)
+	{
+		if (gs->computer.position.y > gs->ball.position.y + computer_paddle_target_offset)
+		{
+			gs->computer.y_offset -= gs->computer_paddle_y_velocity * gs->delta_time;
+		}
+		else if (gs->computer.position.y < gs->ball.position.y - computer_paddle_target_offset)
+		{
+			gs->computer.y_offset += gs->computer_paddle_y_velocity * gs->delta_time;
+		}
+	}
+	else
+	{
+		if (gs->computer.position.y > 0.0f)
+		{
+			gs->computer.y_offset -= gs->computer_paddle_y_velocity * gs->delta_time;
+		}
+		else if (gs->computer.position.y < 0.0f)
+		{
+			gs->computer.y_offset += gs->computer_paddle_y_velocity * gs->delta_time;
+		}
+	}
+
+	gs->player.position.y = gs->player.y_offset;
+	gs->computer.position.y = gs->computer.y_offset;
+
+	if (gs->ball_moving)
+	{
+		calculate_ball_position(gs, gs->ball.width, gs->ball.height);
+	}
+
+	// COLLISION DETECTION GOES HERE
+	if (gs->ball.is_moving_right)
+	{
+		handle_collision(&gs->ball, &gs->computer, gs->ball.width, gs->ball.height, gs->computer.width, gs->computer.height);
+	}
+	else
+	{
+		handle_collision(&gs->ball, &gs->player, gs->ball.width, gs->ball.height, gs->player.width, gs->player.height);
+	}
+
+	/******* END UPDATE *******/
+
+	/******* RENDER *******/
+
+	// Drawing paddles and ball
+	glUseProgram(shader_program_id);
+
+	glBindVertexArray(gs->player.vao);
+	glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), gs->player.position.x, gs->player.position.y);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(gs->computer.vao);
+	glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), gs->computer.position.x, gs->computer.position.y);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(gs->ball.vao);
+	glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), gs->ball.position.x, gs->ball.position.y);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(0);
+
+	/******* END RENDER *******/
 }
 
 GLuint build_vao(GLfloat* vertices, GLuint vertices_size)
