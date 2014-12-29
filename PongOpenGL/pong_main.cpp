@@ -90,80 +90,83 @@ int main(void)
 		delta_time = (float)(glfwGetTime() - last_time) * 100.0f;
 		last_time = (float)glfwGetTime();
 
-		// TODO: Clean this up
-		if (last_time - ball_pause_time > 1.0f)
+		if (game_in_progress)
 		{
-			ball_moving = true;
-		}
-
-		/******* UPDATE *******/
-
-		// COMPUTER PADDLE AI
-		float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
-
-		if (ball.is_moving_right)
-		{
-			if (paddle_computer.position.y > ball.position.y + computer_paddle_target_offset)
+			// TODO: Clean this up
+			if (last_time - ball_pause_time > 1.0f)
 			{
-				computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+				ball_moving = true;
 			}
-			else if (paddle_computer.position.y < ball.position.y - computer_paddle_target_offset)
+
+			/******* UPDATE *******/
+
+			// COMPUTER PADDLE AI
+			float computer_paddle_target_offset = ((float) rand() / (float) RAND_MAX) / 2.0f;
+
+			if (ball.is_moving_right)
 			{
-				computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+				if (paddle_computer.position.y > ball.position.y + computer_paddle_target_offset)
+				{
+					computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+				}
+				else if (paddle_computer.position.y < ball.position.y - computer_paddle_target_offset)
+				{
+					computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+				}
 			}
-		}
-		else
-		{
-			if (paddle_computer.position.y > 0.0f)
+			else
 			{
-				computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+				if (paddle_computer.position.y > 0.0f)
+				{
+					computer_paddle_y_offset -= computer_paddle_y_velocity * delta_time;
+				}
+				else if (paddle_computer.position.y < 0.0f)
+				{
+					computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+				}
 			}
-			else if (paddle_computer.position.y < 0.0f)
+
+			paddle_player.position.y = player_paddle_y_offset;
+			paddle_computer.position.y = computer_paddle_y_offset;
+
+			if (ball_moving)
 			{
-				computer_paddle_y_offset += computer_paddle_y_velocity * delta_time;
+				calculate_ball_position(&ball, delta_time, ball_width, ball_height);
 			}
+
+			// COLLISION DETECTION GOES HERE
+			if (ball.is_moving_right)
+			{
+				handle_collision(&ball, &paddle_computer, ball_width, ball_height, paddle_width, paddle_height);
+			}
+			else
+			{
+				handle_collision(&ball, &paddle_player, ball_width, ball_height, paddle_width, paddle_height);
+			}
+
+			/******* END UPDATE *******/
+
+			/******* RENDER *******/
+
+			// Drawing paddles and ball
+			glUseProgram(shader_program_id);
+
+			glBindVertexArray(paddle_player.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_player.position.x, paddle_player.position.y);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+			glBindVertexArray(paddle_computer.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.position.x, paddle_computer.position.y);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+			glBindVertexArray(ball.vao);
+			glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.position.x, ball.position.y);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+			glBindVertexArray(0);
+
+			/******* END RENDER *******/
 		}
-
-		paddle_player.position.y = player_paddle_y_offset;
-		paddle_computer.position.y = computer_paddle_y_offset;
-
-		if (ball_moving)
-		{
-			calculate_ball_position(&ball, delta_time, ball_width, ball_height);
-		}
-
-		// COLLISION DETECTION GOES HERE
-		if (ball.is_moving_right)
-		{
-			handle_collision(&ball, &paddle_computer, ball_width, ball_height, paddle_width, paddle_height);
-		}
-		else
-		{
-			handle_collision(&ball, &paddle_player, ball_width, ball_height, paddle_width, paddle_height);
-		}
-
-		/******* END UPDATE *******/
-
-		/******* RENDER *******/
-
-		// Drawing paddles and ball
-		glUseProgram(shader_program_id);
-
-		glBindVertexArray(paddle_player.vao);
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_player.position.x, paddle_player.position.y);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(paddle_computer.vao);
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), paddle_computer.position.x, paddle_computer.position.y);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(ball.vao);
-		glUniform2f(glGetUniformLocation(shader_program_id, "position_offset"), ball.position.x, ball.position.y);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(0);
-
-		/******* END RENDER *******/
 
 		glfwSwapBuffers(window);
 	}
@@ -217,6 +220,10 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 		if (ball->position.x > (1.0f - (ball_width / 2)))
 		{
 			player_score++;
+			if (player_score == 5)
+			{
+				reset_game();
+			}
 			reset_ball(ball);
 			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
 		}
@@ -227,6 +234,10 @@ void calculate_ball_position(Ball* ball, GLfloat delta_time, GLfloat ball_width,
 		if (ball->position.x < (-1.0f + (ball_width / 2)))
 		{
 			computer_score++;
+			if (computer_score == 5)
+			{
+				reset_game();
+			}
 			reset_ball(ball);
 			printf("PLAYER: %d CPU: %d\n", player_score, computer_score);
 		}
@@ -316,11 +327,39 @@ bool is_intersecting_on_x_axis(Ball* ball, Paddle* paddle, float ball_width, flo
 	return false;
 }
 
+void reset_game()
+{
+	player_score = 0;
+	computer_score = 0;
+	ball_moving = false;
+	player_paddle_y_offset = 0.0f;
+	computer_paddle_y_offset = 0.0f;
+	game_in_progress = false;
+
+	printf("PRESS 'N' TO START A NEW GAME OR 'Q' TO QUIT\n");
+}
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
+	}
+
+	if (keys[GLFW_KEY_N])
+	{
+		if (!game_in_progress)
+		{
+			game_in_progress = true;
+		}
+	}
+
+	if (keys[GLFW_KEY_Q])
+	{
+		if (!game_in_progress)
+		{
+			glfwSetWindowShouldClose(window, true);
+		}
 	}
 	if (action == GLFW_PRESS)
 	{

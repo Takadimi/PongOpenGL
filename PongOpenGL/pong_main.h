@@ -11,6 +11,7 @@
 #define SCREEN_HEIGHT 600
 
 // GLOBALS
+bool game_in_progress				= false;
 float delta_time					= 0.0f;
 float ball_pause_time				= 0.0f;
 float last_time						= 0.0f;
@@ -55,6 +56,7 @@ void reset_ball(Ball* ball);
 void handle_collision(Ball* ball, Paddle* paddle, float ball_width, float ball_height, float paddle_width, float paddle_height);
 bool is_intersecting_on_y_axis(Ball* ball, Paddle* paddle, float ball_height, float paddle_height);
 bool is_intersecting_on_x_axis(Ball* ball, Paddle* paddle, float ball_width, float paddle_width);
+void reset_game();
 void key_callback(GLFWwindow*, int, int, int, int);
 void handle_player_keyboard_input();
 void handle_player_controller_input();
